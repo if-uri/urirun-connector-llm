@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "urirun-connector-llm"
-version = "0.1.0"
-description = "LLM connector for ifuri and urirun"
+version = "0.3.0"
+description = "LLM connector for ifuri and urirun (text + vision/OCR)"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
