@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "urirun-connector-llm"
+version = "0.1.0"
+description = "LLM connector for ifuri and urirun"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [{ name = "if-uri" }]
+dependencies = ["urirun @ git+https://github.com/if-uri/urirun.git#subdirectory=adapters/python"]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+hosted = ["litellm>=1.0"]
+
+[project.scripts]
+urirun-connector-llm = "urirun_connector_llm.core:main"
+
+[project.entry-points."urirun.bindings"]
+llm = "urirun_connector_llm.core:urirun_bindings"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["urirun_connector_llm*"]
+
+[tool.setuptools.package-data]
+urirun_connector_llm = ["connector.manifest.json"]
