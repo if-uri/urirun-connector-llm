@@ -7,7 +7,8 @@ Catalog: <https://connect.ifuri.com/connectors/llm>
 
 | URI | Operation |
 | --- | --- |
-| `llm://host/chat/command/complete` | run a chat completion |
+| `llm://host/chat/command/complete` | run a chat completion (text or + image) |
+| `llm://host/vision/command/ocr` | extract text from an image (OCR) |
 | `llm://host/model/query/list` | list available models |
 
 Both routes call an external backend, so through the runtime they stay a
@@ -38,6 +39,32 @@ OPENROUTER_API_KEY=sk-... urirun-connector-llm complete \
 urirun-connector-llm list                         # list models
 urirun-connector-llm bindings | urirun validate /dev/stdin
 ```
+
+### Vision / OCR
+
+Pass an image to a vision-capable model — as a **file path, http(s) URL,
+data-URI or raw base64**. `complete` takes `image` / `images`; the `ocr` route is
+a shortcut that returns the recognised text:
+
+```python
+from urirun_connector_llm import complete, ocr
+
+# OCR an image (default instruction: extract all text)
+ocr("/path/scan.png", model="openrouter/google/gemini-3.1-flash-image-preview")
+# -> {"ok": True, "provider": "litellm", "response": "FAKTURA nr 7/2026\nKwota: 199,00 PLN"}
+
+# or a full multimodal completion with your own prompt
+complete("What is the total amount?", model="...vision...", image="https://host/invoice.png")
+```
+
+litellm models get OpenAI-style `image_url` message parts; a local Ollama vision
+model (`llava`, `llama3.2-vision`) gets the native base64 `images` list — same
+call either way. The same multimodal model can plan flows *and* read images.
+
+> Note: calling a **hosted (litellm)** vision model through the **isolated**
+> runtime (`urirun.run(..., mode=execute)`) can segfault on native-lib teardown;
+> call `complete()`/`ocr()` **in-process**, or use a **local Ollama** vision model
+> for OCR as an isolated flow step.
 
 ## Authoring shape (v2)
 

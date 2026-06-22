@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.0] - 2026-06-22
+
+### Added
+- Vision / multimodal input: `complete(image=..., images=[...])` accepts a file
+  path, http(s) URL, data-URI or raw base64 — litellm models get `image_url`
+  message parts, Ollama gets the native base64 `images` list. New
+  `llm://host/vision/command/ocr` route extracts text from an image. Verified
+  end-to-end against an OpenRouter vision model.
+
 ## [0.2.0] - 2026-06-22
 
 ### Added

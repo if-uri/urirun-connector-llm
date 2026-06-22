@@ -3,18 +3,19 @@
   "name": "LLM",
   "status": "available",
   "category": "AI",
-  "summary": "Run local LLM completions and list models through llm:// URI routes.",
-  "description": "LLM is an external urirun connector that runs chat completions and lists models as llm:// routes. Completions hit an external backend, so routes default to dry-run; pass --execute (or mode=execute) to call an Ollama-compatible endpoint (or point base_url at a litellm/OpenAI-compatible proxy for hosted models like Claude).",
+  "summary": "Run LLM completions (text + vision/OCR) and list models through llm:// URI routes.",
+  "description": "LLM is an external urirun connector that runs chat completions, reads images (vision/OCR) and lists models as llm:// routes. Completions hit an external backend, so routes default to dry-run; pass --execute (or mode=execute). A bare model uses an Ollama-compatible endpoint; a provider-prefixed model (openrouter/..., openai/...) goes through litellm with the matching *_API_KEY. Pass image/images (file path, http(s) URL, data-URI or base64) to a vision model, or use the ocr route to extract text from an image.",
   "useCases": [
     "Run an LLM completion as a step inside a URI flow.",
+    "OCR / read an image with a vision model (text, screenshots, scans).",
     "List available models on a local or proxied backend.",
     "Project LLM access to MCP/A2A so agents can call models through URIs."
   ],
-  "flowExample": ["llm://host/model/query/list", "llm://host/chat/command/complete"],
+  "flowExample": ["llm://host/model/query/list", "llm://host/chat/command/complete", "llm://host/vision/command/ocr"],
   "requires": ["python>=3.10"],
   "install": {"mode": "urirun-extra", "pipSpec": "urirun-connector-llm @ git+https://github.com/if-uri/urirun-connector-llm.git@v0.1.0"},
   "provenance": "community",
   "publisher": {"name": "if-uri", "url": "https://ifuri.com", "github": "https://github.com/if-uri"},
   "docsUrl": "https://github.com/if-uri/urirun-connector-llm",
-  "keywords": ["llm", "ai", "completion", "ollama", "connector"]
+  "keywords": ["llm", "ai", "completion", "vision", "ocr", "multimodal", "ollama", "connector"]
 }
