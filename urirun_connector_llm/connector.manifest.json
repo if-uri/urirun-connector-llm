@@ -11,11 +11,44 @@
     "List available models on a local or proxied backend.",
     "Project LLM access to MCP/A2A so agents can call models through URIs."
   ],
-  "flowExample": ["llm://host/model/query/list", "llm://host/chat/command/complete", "llm://host/vision/command/ocr"],
-  "requires": ["python>=3.10"],
-  "install": {"mode": "urirun-extra", "pipSpec": "urirun-connector-llm @ git+https://github.com/if-uri/urirun-connector-llm.git@v0.1.0"},
+  "flowExample": [
+    "llm://host/model/query/list",
+    "llm://host/chat/command/complete",
+    "llm://host/vision/command/ocr"
+  ],
+  "requires": [
+    "python>=3.10"
+  ],
+  "install": {
+    "mode": "urirun-extra",
+    "pipSpec": "urirun-connector-llm @ git+https://github.com/if-uri/urirun-connector-llm.git@v0.1.0"
+  },
   "provenance": "community",
-  "publisher": {"name": "if-uri", "url": "https://ifuri.com", "github": "https://github.com/if-uri"},
+  "publisher": {
+    "name": "if-uri",
+    "url": "https://ifuri.com",
+    "github": "https://github.com/if-uri"
+  },
   "docsUrl": "https://github.com/if-uri/urirun-connector-llm",
-  "keywords": ["llm", "ai", "completion", "vision", "ocr", "multimodal", "ollama", "connector"]
+  "keywords": [
+    "llm",
+    "ai",
+    "completion",
+    "vision",
+    "ocr",
+    "multimodal",
+    "ollama",
+    "connector"
+  ],
+  "routes": [
+    "llm://host/chat/command/complete",
+    "llm://host/model/query/list",
+    "llm://host/vision/command/ocr"
+  ],
+  "uriSchemes": [
+    "llm"
+  ],
+  "adapterKinds": [
+    "local-function"
+  ]
 }

@@ -113,8 +113,16 @@ def _looks_like_path(img: str) -> bool:
 
 
 def _complete_litellm(prompt: str, model: str, base_url: str, images: list[str] | None = None) -> dict[str, Any]:
+    import contextlib
+    import sys
+    # litellm prints a "Provider List" banner (and other notices) to STDOUT, which corrupts the
+    # JSON contract when this handler runs in the isolated `local-function-subprocess` adapter
+    # (the caller then sees {stdout: …} with no `ok`). Keep litellm's chatter on stderr and off.
     try:
-        import litellm
+        with contextlib.redirect_stdout(sys.stderr):
+            import litellm
+            litellm.suppress_debug_info = True
+            litellm.set_verbose = False
     except ImportError:
         return urirun.fail("litellm not installed — `pip install litellm` to use hosted providers", model=model)
     # Only forward base_url when it's a real override (not the Ollama default).
@@ -129,7 +137,8 @@ def _complete_litellm(prompt: str, model: str, base_url: str, images: list[str] 
     except (urllib.error.URLError, OSError, ValueError) as exc:
         return urirun.fail(f"image error: {exc}", model=model)
     try:
-        resp = litellm.completion(model=model, messages=messages, api_base=api_base)
+        with contextlib.redirect_stdout(sys.stderr):
+            resp = litellm.completion(model=model, messages=messages, api_base=api_base)
     except Exception as exc:  # noqa: BLE001 - surface any provider/auth error as JSON
         return urirun.fail(str(exc), model=model)
     try:
