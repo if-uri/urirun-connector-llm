@@ -43,7 +43,7 @@ def test_provider_routing() -> None:
 def test_complete_routes_through_litellm_for_prefixed_model(monkeypatch) -> None:
     calls = {}
 
-    def fake_completion(model, messages, api_base=None):
+    def fake_completion(model, messages, api_base=None, api_key=None):
         calls["model"] = model
         calls["api_base"] = api_base
         return {"choices": [{"message": {"content": "hi from claude"}}]}
@@ -57,6 +57,31 @@ def test_complete_routes_through_litellm_for_prefixed_model(monkeypatch) -> None
                  "provider": "litellm", "response": "hi from claude"}
     assert calls["model"] == "openrouter/anthropic/claude-3.5-sonnet"
     assert calls["api_base"] is None  # default ollama base_url is not forwarded to litellm
+
+
+def test_complete_resolves_api_key_secret_reference(monkeypatch) -> None:
+    captured = {}
+
+    def fake_completion(model, messages, api_base=None, api_key=None):
+        captured["api_key"] = api_key
+        return {"choices": [{"message": {"content": "ok"}}]}
+
+    import sys, types
+    fake = types.ModuleType("litellm")
+    fake.completion = fake_completion
+    monkeypatch.setitem(sys.modules, "litellm", fake)
+    monkeypatch.setenv("DEMO_LLM_KEY", "sk-secret-xyz")
+
+    # Reference resolves under an allow-list and is handed to litellm as a real key.
+    r = complete("hi", model="openrouter/x/y",
+                 api_key="getv://DEMO_LLM_KEY", secret_allow="getv://DEMO_LLM_KEY")
+    assert r["ok"] is True
+    assert captured["api_key"] == "sk-secret-xyz"
+
+    # Same reference without the allow-list is denied by policy (deny-by-default).
+    denied = complete("hi", model="openrouter/x/y", api_key="getv://DEMO_LLM_KEY")
+    assert denied["ok"] is False
+    assert "denied by policy" in denied["error"]
 
 
 def test_litellm_missing_is_a_clean_error(monkeypatch) -> None:
@@ -150,7 +175,7 @@ def test_image_helpers_resolve_file(tmp_path) -> None:
 def test_complete_with_image_builds_multimodal_litellm(monkeypatch) -> None:
     captured = {}
 
-    def fake_completion(model, messages, api_base=None):
+    def fake_completion(model, messages, api_base=None, api_key=None):
         captured["messages"] = messages
         return {"choices": [{"message": {"content": "INVOICE 2026"}}]}
 
@@ -183,7 +208,7 @@ def test_complete_with_image_ollama_native(monkeypatch) -> None:
 
 
 def test_ocr_route(monkeypatch) -> None:
-    def fake_completion(model, messages, api_base=None):
+    def fake_completion(model, messages, api_base=None, api_key=None):
         return {"choices": [{"message": {"content": "FAKTURA 199,00 PLN"}}]}
 
     import sys, types

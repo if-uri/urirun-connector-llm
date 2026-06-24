@@ -23,6 +23,7 @@ Claude.
 from __future__ import annotations
 
 import json
+import re
 import urllib.error
 import urllib.request
 from typing import Any
@@ -34,6 +35,32 @@ conn = urirun.connector(CONNECTOR_ID, scheme="llm")
 
 DEFAULT_BASE_URL = "http://localhost:11434"
 DEFAULT_MODEL = "llama3"
+
+
+def _resolve_api_key(value: str, secret_allow: str = "") -> str:
+    """Resolve an ``api_key`` that may be a secret *reference*, via the urirun secrets layer.
+
+    ``value`` may be a literal key, a ``secret://``/``getv://`` reference, or a
+    ``{getv:NAME}`` / ``{secret:...}`` placeholder. References resolve under a deny-by-default
+    allow-list (``secret_allow``, comma/space-separated globs); a literal is returned
+    unchanged; empty input returns '' (litellm then falls back to ambient provider env).
+
+    This keeps credentials addressed by reference, never embedded — the same layering ksef
+    uses — instead of the connector reading the key from the process environment itself.
+    """
+    value = (value or "").strip()
+    if not value:
+        return ""
+    try:
+        from urirun.runtime import secrets as _secrets
+    except Exception:  # noqa: BLE001 - older urirun without the secrets layer
+        return value if ("://" not in value and "{" not in value) else ""
+    allow = [p for p in re.split(r"[,\s]+", secret_allow or "") if p]
+    if _secrets.has_secret(value):  # {getv:..} / {secret:..} placeholder
+        return _secrets.fill_secrets(value, execute=True, allow=allow)
+    if value.startswith(("secret://", "getv://")):  # bare reference
+        return _secrets.resolve(value, execute=True, allow=allow).reveal()
+    return value  # literal key
 
 
 # --- shared backend helper -------------------------------------------------
@@ -112,7 +139,8 @@ def _looks_like_path(img: str) -> bool:
     return os.path.isfile(img)
 
 
-def _complete_litellm(prompt: str, model: str, base_url: str, images: list[str] | None = None) -> dict[str, Any]:
+def _complete_litellm(prompt: str, model: str, base_url: str, images: list[str] | None = None,
+                      api_key: str | None = None) -> dict[str, Any]:
     import contextlib
     import sys
     # litellm prints a "Provider List" banner (and other notices) to STDOUT, which corrupts the
@@ -138,7 +166,11 @@ def _complete_litellm(prompt: str, model: str, base_url: str, images: list[str] 
         return urirun.fail(f"image error: {exc}", model=model)
     try:
         with contextlib.redirect_stdout(sys.stderr):
-            resp = litellm.completion(model=model, messages=messages, api_base=api_base)
+            # Pass the key explicitly (resolved from a secret reference by the caller);
+            # api_key=None lets litellm fall back to its provider env var, preserving the
+            # previous ambient behaviour for callers that pass nothing.
+            resp = litellm.completion(model=model, messages=messages, api_base=api_base,
+                                      api_key=api_key or None)
     except Exception as exc:  # noqa: BLE001 - surface any provider/auth error as JSON
         return urirun.fail(str(exc), model=model)
     try:
@@ -152,7 +184,8 @@ def _complete_litellm(prompt: str, model: str, base_url: str, images: list[str] 
 
 @conn.handler("chat/command/complete", isolated=True, meta={"label": "Run a chat completion"})
 def complete(prompt: str = "", model: str = DEFAULT_MODEL, base_url: str = DEFAULT_BASE_URL,
-             provider: str = "", image: str = "", images: list[str] | None = None) -> dict[str, Any]:
+             provider: str = "", image: str = "", images: list[str] | None = None,
+             api_key: str = "", secret_allow: str = "") -> dict[str, Any]:
     """Run a chat completion, optionally **multimodal**.
 
     Backend is chosen by the model/provider: a provider-prefixed model
@@ -163,12 +196,24 @@ def complete(prompt: str = "", model: str = DEFAULT_MODEL, base_url: str = DEFAU
     ``image`` / ``images`` attach pictures (file path, http(s) URL, data-URI or
     raw base64) for a vision model — litellm gets ``image_url`` message parts,
     Ollama gets the native ``images`` base64 list. Use a vision-capable model.
+
+    ``api_key`` is the hosted-provider credential, addressed **by reference** —
+    ``secret://dotenv/<file>#OPENROUTER_API_KEY`` or ``{getv:OPENROUTER_API_KEY}`` — and
+    resolved through the urirun secrets layer under ``secret_allow`` (comma/space-separated
+    deny-by-default globs). A literal key is accepted too; an empty value falls back to
+    litellm's ambient provider env var (previous behaviour).
     """
     if not prompt and not (image or images):
         return urirun.fail("prompt or image is required")
     imgs = _collect_images(image, images)
     if _wants_litellm(model, provider):
-        return _complete_litellm(prompt, model, base_url, imgs)
+        try:
+            resolved_key = _resolve_api_key(api_key, secret_allow)
+        except PermissionError as exc:
+            return urirun.fail(f"api_key secret denied by policy (add it to secret_allow): {exc}", model=model)
+        except (KeyError, ValueError, RuntimeError) as exc:
+            return urirun.fail(f"api_key secret unresolved: {exc}", model=model)
+        return _complete_litellm(prompt, model, base_url, imgs, api_key=resolved_key)
     body: dict[str, Any] = {"model": model, "prompt": prompt, "stream": False}
     try:
         if imgs:
@@ -181,18 +226,20 @@ def complete(prompt: str = "", model: str = DEFAULT_MODEL, base_url: str = DEFAU
 
 @conn.handler("vision/command/ocr", isolated=True, meta={"label": "Extract text from an image (OCR)"})
 def ocr(image: str = "", model: str = DEFAULT_MODEL, base_url: str = DEFAULT_BASE_URL,
-        provider: str = "", prompt: str = "") -> dict[str, Any]:
+        provider: str = "", prompt: str = "", api_key: str = "", secret_allow: str = "") -> dict[str, Any]:
     """OCR / read an image with a vision model.
 
     ``image`` is a file path, http(s) URL, data-URI or raw base64. Returns the
     recognised text in ``response``. Pass a vision-capable ``model`` (e.g. a local
     Ollama ``llava``/``llama3.2-vision``, or a hosted ``openrouter/...`` vision
-    model). ``prompt`` overrides the default OCR instruction.
+    model). ``prompt`` overrides the default OCR instruction. ``api_key`` / ``secret_allow``
+    address the hosted-provider credential by reference (see ``complete``).
     """
     if not image:
         return urirun.fail("image is required")
     instruction = prompt or "Extract ALL text from this image verbatim. Return only the text, no commentary."
-    return complete(instruction, model=model, base_url=base_url, provider=provider, image=image)
+    return complete(instruction, model=model, base_url=base_url, provider=provider, image=image,
+                    api_key=api_key, secret_allow=secret_allow)
 
 
 @conn.handler("model/query/list", isolated=True, meta={"label": "List available models"})
