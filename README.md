@@ -40,6 +40,32 @@ urirun-connector-llm list                         # list models
 urirun-connector-llm bindings | urirun validate /dev/stdin
 ```
 
+### API key by reference (secrets layer)
+
+The hosted-provider credential is addressed **by reference**, never embedded — pass `api_key`
+as a `secret://`/`getv://` reference plus `secret_allow` (a deny-by-default glob list) and it
+is resolved through the urirun secrets layer (`urirun.resolve_secret`), so the value is gated
+by policy and redacted in logs:
+
+```bash
+# key stored in the OS keyring (recommended), resolved deny-by-default
+urirun-connector-llm complete --model openrouter/anthropic/claude-3.5-sonnet \
+  --api_key 'secret://keyring/openrouter#key' \
+  --secret_allow 'secret://keyring/openrouter#key' --prompt "Say hi"
+
+# or reference a process env var explicitly
+--api_key 'getv://OPENROUTER_API_KEY' --secret_allow 'getv://OPENROUTER_API_KEY'
+```
+
+A literal key still works, and an empty `api_key` falls back to litellm's ambient `*_API_KEY`
+env var (previous behaviour).
+
+> **Store secrets in the keyring, not a `.env`.** litellm itself runs `dotenv.load_dotenv()`
+> at import, so any `.env` found from the working directory is loaded into `os.environ`
+> regardless of this connector. Keeping the key in `secret://keyring/...` (or `secret://vault/...`)
+> means there is no `.env` value for litellm to pull into the process environment, and the key
+> is only ever materialised at the call boundary under the `secret_allow` policy.
+
 ### Vision / OCR
 
 Pass an image to a vision-capable model — as a **file path, http(s) URL,
