@@ -23,7 +23,6 @@ Claude.
 from __future__ import annotations
 
 import json
-import re
 import urllib.error
 import urllib.request
 from typing import Any
@@ -36,31 +35,10 @@ conn = urirun.connector(CONNECTOR_ID, scheme="llm")
 DEFAULT_BASE_URL = "http://localhost:11434"
 DEFAULT_MODEL = "llama3"
 
-
-def _resolve_api_key(value: str, secret_allow: str = "") -> str:
-    """Resolve an ``api_key`` that may be a secret *reference*, via the urirun secrets layer.
-
-    ``value`` may be a literal key, a ``secret://``/``getv://`` reference, or a
-    ``{getv:NAME}`` / ``{secret:...}`` placeholder. References resolve under a deny-by-default
-    allow-list (``secret_allow``, comma/space-separated globs); a literal is returned
-    unchanged; empty input returns '' (litellm then falls back to ambient provider env).
-
-    This keeps credentials addressed by reference, never embedded — the same layering ksef
-    uses — instead of the connector reading the key from the process environment itself.
-    """
-    value = (value or "").strip()
-    if not value:
-        return ""
-    try:
-        from urirun.runtime import secrets as _secrets
-    except Exception:  # noqa: BLE001 - older urirun without the secrets layer
-        return value if ("://" not in value and "{" not in value) else ""
-    allow = [p for p in re.split(r"[,\s]+", secret_allow or "") if p]
-    if _secrets.has_secret(value):  # {getv:..} / {secret:..} placeholder
-        return _secrets.fill_secrets(value, execute=True, allow=allow)
-    if value.startswith(("secret://", "getv://")):  # bare reference
-        return _secrets.resolve(value, execute=True, allow=allow).reveal()
-    return value  # literal key
+# Credentials are addressed by reference (never embedded); the shared resolver lives in the
+# urirun SDK so every connector honours the secrets layer identically. See
+# ``urirun.resolve_secret`` / ``urirun.runtime.secrets.resolve_secret``.
+_resolve_api_key = urirun.resolve_secret
 
 
 # --- shared backend helper -------------------------------------------------
