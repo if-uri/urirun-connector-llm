@@ -1,0 +1,53 @@
+{
+  "contracts": {
+    "chat/command/complete": {
+      "version": "v1",
+      "effect": "command",
+      "reversible": false,
+      "inp": {
+        "prompt": "?str", "model": "?str", "base_url": "?str", "provider": "?str",
+        "image": "?str", "images": "?list", "api_key": "?str", "secret_allow": "?str"
+      },
+      "out": { "model": "str", "provider": "str", "response": "str" },
+      "errors": ["invalid-argument", "credentials-missing", "api-error"],
+      "examples": [
+        {
+          "payload": { "prompt": "Say hi" },
+          "result": { "ok": true, "model": "llama3", "provider": "ollama", "response": "Hello!" }
+        }
+      ]
+    },
+    "vision/command/ocr": {
+      "version": "v1",
+      "effect": "command",
+      "reversible": false,
+      "inp": {
+        "image": "?str", "model": "?str", "base_url": "?str", "provider": "?str",
+        "prompt": "?str", "api_key": "?str", "secret_allow": "?str"
+      },
+      "out": { "model": "str", "provider": "str", "response": "str" },
+      "errors": ["invalid-argument", "credentials-missing", "api-error"],
+      "examples": [
+        {
+          "payload": { "image": "/tmp/receipt.png" },
+          "result": { "ok": true, "model": "llava", "provider": "ollama", "response": "TOTAL 12.00" }
+        }
+      ]
+    },
+    "model/query/list": {
+      "version": "v1",
+      "effect": "query",
+      "reversible": false,
+      "inp": { "base_url": "?str" },
+      "out": { "models": "list" },
+      "errors": ["api-error"],
+      "examples": [
+        {
+          "payload": {},
+          "result": { "ok": true, "models": ["llama3", "llava"] }
+        }
+      ]
+    }
+  },
+  "wires": []
+}
