@@ -9,7 +9,7 @@
         "image": "?str", "images": "?list", "api_key": "?str", "secret_allow": "?str"
       },
       "out": { "model": "str", "provider": "str", "response": "str" },
-      "errors": ["invalid-argument", "credentials-missing", "api-error"],
+      "errors": ["precondition-unmet", "unauthenticated", "degraded-backend"],
       "examples": [
         {
           "payload": { "prompt": "Say hi" },
@@ -26,7 +26,7 @@
         "prompt": "?str", "api_key": "?str", "secret_allow": "?str"
       },
       "out": { "model": "str", "provider": "str", "response": "str" },
-      "errors": ["invalid-argument", "credentials-missing", "api-error"],
+      "errors": ["precondition-unmet", "unauthenticated", "degraded-backend"],
       "examples": [
         {
           "payload": { "image": "/tmp/receipt.png" },
@@ -40,7 +40,7 @@
       "reversible": false,
       "inp": { "base_url": "?str" },
       "out": { "models": "list" },
-      "errors": ["api-error"],
+      "errors": ["degraded-backend"],
       "examples": [
         {
           "payload": {},
