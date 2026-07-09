@@ -182,8 +182,8 @@ def test_complete_with_image_builds_multimodal_litellm(monkeypatch) -> None:
     import sys, types
     fake = types.ModuleType("litellm"); fake.completion = fake_completion
     monkeypatch.setitem(sys.modules, "litellm", fake)
-    r = complete("read it", model="openrouter/google/gemini-3.1-flash-image-preview", image=PNG_1PX)
-    assert r == {"ok": True, "model": "openrouter/google/gemini-3.1-flash-image-preview",
+    r = complete("read it", model="openrouter/qwen/qwen3.7-plus", image=PNG_1PX)
+    assert r == {"ok": True, "model": "openrouter/qwen/qwen3.7-plus",
                  "provider": "litellm", "response": "INVOICE 2026"}
     content = captured["messages"][0]["content"]
     assert content[0] == {"type": "text", "text": "read it"}
@@ -214,7 +214,7 @@ def test_ocr_route(monkeypatch) -> None:
     import sys, types
     fake = types.ModuleType("litellm"); fake.completion = fake_completion
     monkeypatch.setitem(sys.modules, "litellm", fake)
-    r = ocr(PNG_1PX, model="openrouter/google/gemini-3.1-flash-image-preview")
+    r = ocr(PNG_1PX, model="openrouter/qwen/qwen3.7-plus")
     assert r["ok"] is True
     assert r["response"] == "FAKTURA 199,00 PLN"
 

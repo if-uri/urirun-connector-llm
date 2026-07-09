@@ -76,7 +76,7 @@ a shortcut that returns the recognised text:
 from urirun_connector_llm import complete, ocr
 
 # OCR an image (default instruction: extract all text)
-ocr("/path/scan.png", model="openrouter/google/gemini-3.1-flash-image-preview")
+ocr("/path/scan.png", model="openrouter/qwen/qwen3.7-plus")
 # -> {"ok": True, "provider": "litellm", "response": "FAKTURA nr 7/2026\nKwota: 199,00 PLN"}
 
 # or a full multimodal completion with your own prompt
